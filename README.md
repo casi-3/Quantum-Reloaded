@@ -1,75 +1,63 @@
-# Automatic qBittorrent Port Updater for ProtonVPN
+# Quantum Reloaded - Automatic qBittorrent Port Updater for ProtonVPN
 
-This application will monitor the Windows ProtonVPN client log files for port changes and pass them via the qBittorrent WebUI.
+This application monitors the Windows ProtonVPN client log files for port changes and passes them to qBittorrent through its WebUI.
 
-In order to clone this repository you need to use the following command, or it wont clone the linked submodules
-"git clone --recurse-submodules https://github.com/UHAXM1/Quantum"
+## About this fork
 
-Quantum uses the linked submodule qBittorrent-net-client found here
-https://github.com/fedarovich/qbittorrent-net-client
+Quantum Reloaded is a community continuation of **Quantum**, originally created by **UHAX**:
+https://github.com/UHAXM1/Quantum
 
-Tested with ProtonVPN version 3.3.2
+The original project is no longer maintained. This fork keeps it working with current qBittorrent versions and adds a couple of requested features. All credit for the original application goes to UHAX. It is released under the same licence (GPL-3.0) and the original copyright is kept.
 
-Requires .Net 8
+## What is new in Reloaded
 
-Simply install and provide connection information to qBittorrent, Quantum will automatically try to find the ProtonVPN log directory
+- Works with **qBittorrent 5.2+**, tested against a real qBittorrent 5.2 instance. The port is now updated with a single targeted call instead of rewriting every preference.
+- **Single file**: one `Quantum.exe`, nothing else to install. The .NET runtime is included in the file.
+- Updated to **.NET 10**.
+- **Self-signed HTTPS support**: an option to ignore certificate errors, for a qBittorrent WebUI served over HTTPS with a self-signed certificate.
+- **Post-update script**: run your own `.bat`, `.cmd`, `.ps1` or `.exe` after the port is updated. The new port is passed as the first argument and as the `QUANTUM_PORT` environment variable. The exit code is written to the log.
+- Builds again from a clean checkout (the original was missing a reference and would not compile).
 
-Quantum will check the logs files once every minute.
+## Requirements
 
-Detailed setup steps:
+The single `Quantum.exe` needs nothing else, just run it on Windows. You still need the Windows ProtonVPN client (with port forwarding) and qBittorrent with the WebUI enabled.
 
-qBittorrent Setup
+To build from source you need .NET 10 and the qBittorrent-net-client submodule:
+```
+git clone --recurse-submodules https://github.com/casi-3/Quantum-Reloaded
+```
+Submodule used: https://github.com/fedarovich/qbittorrent-net-client
 
-	Open qBittorrent:
-		Launch qBittorrent on your computer.
- 
-	Access Preferences:
-		Go to Tools > Options or press Alt + O to open the preferences window.
+## How it works
 
-	Enable WebUI:
-		In the preferences window, select the Web UI section.
-		Check the box for Enable Web User Interface (Remote control).
-		You can leave the default IP address (usually 127.0.0.1 for local access) and Port (default is 8080), or change them if needed.
+Once you give it your qBittorrent connection details, Quantum finds the ProtonVPN log directory automatically and checks it once a minute. When the forwarded port changes it pushes the new port to qBittorrent.
 
-	Set Authentication:
-		Under Authentication, check the box for Use a username and password.
-		Enter a Username (default is admin).
-		Enter and confirm a Password.
-		Optionally you can enable Bypass authentication for clients on localhost, if you just set this you can leave the username and password blank.
+## qBittorrent setup
 
-	Configure IP and Port:
-		If you want to access the WebUI from other devices on your network, you may need to change the IP address to 0.0.0.0 to allow access from all network interfaces.
-		Make sure the port you are using is not blocked by your firewall.
+1. Open qBittorrent, go to Tools > Options (or Alt + O).
+2. Open the Web UI section and enable the Web User Interface (remote control).
+3. Set a username and password, or enable "Bypass authentication for clients on localhost" (then you can leave them blank).
+4. To reach it from other devices, set the IP address to 0.0.0.0 and check your firewall.
+5. Optionally enable HTTPS with a certificate and key.
+6. Apply, then OK. Check the WebUI works in a browser.
 
-	Security Options:
-		Optionally, you can set up an IP filter to restrict which IP addresses can access the WebUI.
-		You can also enable HTTPS to secure the connection by providing an SSL certificate and key.
+## Quantum setup
 
-	Apply and Save:
-		Click Apply and then OK to save your settings.
+1. Launch Quantum. If it does not appear, check the system tray and double-click the icon.
+2. Startup: enable or disable Quantum starting when you log in (per account).
+3. Log file: leave automatic detection on. If you select it manually you have to redo it after every ProtonVPN update.
+4. Host: `http://127.0.0.1:8080` by default. Change the IP/port for a remote instance. If you use HTTPS, change `http` to `https`.
+5. Username and password: the ones from the qBittorrent setup above (blank if you use localhost bypass).
+6. If your WebUI uses a self-signed HTTPS certificate, tick "Ignore certificate errors (self-signed HTTPS)".
+7. Optionally set a post-update script.
+8. The Test / Save / Update Port Now button is dynamic: it tests and saves the configuration, or forces an immediate port update.
 
-	Access the WebUI:
-		Open a web browser and go to http://: (e.g., http://127.0.0.1:8080 for local access).
-		Log in with the username and password you set.
-	
-Quantum setup
+Closing the window minimises Quantum to the system tray.
 
-	Open Quantum:
-		Launch Quantum on your computer, if this is your first time running Quantum it will popup on screen, if it does not appear check the system tray and double-click the icon.
-		
-	Startup:
-		Enable or Disable Quantum from running when the user logs into the computer, this is account specific.
-		
-	Log File Location:
-		Quantum will try to find the ProtonVPN log file automatically, however if you prefer you can select the location manually, note that you do it manually you need to update the location each time after you update ProtonVPN, I suggest you leave this setting on automatic.
-		
-	qBittorrent Configuration:
-		Host: this should be 'http://127.0.0.1:8080' by default, if you are not using the default port or want to connect to a remote instance change the ip and port number here, if you are using SSL you need to change http to https.
-		Username and Password: Input the username and password you setup in the qBittorrent setup above, if you have enabled Bypass authentication for client on localhost and are local you can leave this blank.
-		
-	Test/Save/Update Port Now:
-		This button is dynamic and changes function depending on what has been selected above.
-		'Test\Save' will test then save the current configuration if it connects, you will get a popup telling you if the connection is a successful.
-		'Update Port Now' will force Quantum to update the port right away without waiting for the timer to count down.
+## Troubleshooting
 
-Setup should now be complete, you can close Quantum by clicking the close window button (it will minimize to the system tray).
+**qBittorrent 5.x answers 401 / Unauthorized to everything (even the login page).** qBittorrent 5.x validates the Host header, including the port. If qBittorrent is behind a port mapping or a reverse proxy (the port you connect to is different from the port qBittorrent actually listens on), it rejects every request. Fix it on the qBittorrent side: connect on its real port, or set `WebUI\HostHeaderValidation=false` in the configuration file (Web UI options), or set the allowed server domains.
+
+## Licence
+
+GPL-3.0, same as the original. See LICENSE. Original project and author: https://github.com/UHAXM1/Quantum
