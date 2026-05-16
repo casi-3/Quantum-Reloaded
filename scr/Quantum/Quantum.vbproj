@@ -2,18 +2,18 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <StartupObject>Sub Main</StartupObject>
     <UseWindowsForms>true</UseWindowsForms>
     <MyType>WindowsForms</MyType>
     <ApplicationIcon>Q_32.ico</ApplicationIcon>
-	<AssemblyVersion>1.5.0.0</AssemblyVersion>
-	<FileVersion>1.5.0.0</FileVersion>
-	<Version>1.5.0.0</Version>
-	<Title>Quantum</Title>
-	<Authors>UHAX</Authors>
+	<AssemblyVersion>1.6.0.0</AssemblyVersion>
+	<FileVersion>1.6.0.0</FileVersion>
+	<Version>1.6.0.0</Version>
+	<Title>Quantum Reloaded</Title>
+	<Authors>UHAX, casi-3</Authors>
 	<PackageId>Quantum</PackageId>
-	<Product>Quantum</Product>
+	<Product>Quantum Reloaded</Product>
   </PropertyGroup>
 
   <ItemGroup>

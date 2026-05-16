@@ -31,11 +31,13 @@ Partial Class Main
         CH_VPNPort = New ColumnHeader()
         CH_VPNValid = New ColumnHeader()
         BTN_LogFile = New Button()
+        BTN_PostScript = New Button()
         TBE_Startup = New ToggleButtonEx()
         TBE_LogFile = New ToggleButtonEx()
         TXT_Host = New TextBox()
         TXT_Username = New TextBox()
         TXT_Password = New TextBox()
+        CHK_IgnoreCert = New CheckBox()
         STS_Main = New StatusStrip()
         TSSL_Main = New ToolStripStatusLabel()
         NI_Main = New NotifyIcon(components)
@@ -143,6 +145,12 @@ Partial Class Main
         BTN_LogFile.TabIndex = 2
         BTN_LogFile.Text = "(...)"
         BTN_LogFile.UseVisualStyleBackColor = True
+        BTN_PostScript.Dock = DockStyle.Fill
+        BTN_PostScript.Name = "BTN_PostScript"
+        BTN_PostScript.TabIndex = 7
+        BTN_PostScript.Text = "Post-update script (optional)"
+        BTN_PostScript.UseVisualStyleBackColor = True
+        TT_Main.SetToolTip(BTN_PostScript, "Optional: a .bat/.cmd/.ps1/.exe run after the port is updated (new port passed as argument and QUANTUM_PORT environment variable)")
         ' 
         ' TBE_Startup
         ' 
@@ -205,7 +213,13 @@ Partial Class Main
         TXT_Password.TextAlign = HorizontalAlignment.Center
         TT_Main.SetToolTip(TXT_Password, "qBittorrent Password")
         TXT_Password.UseSystemPasswordChar = True
-        ' 
+        CHK_IgnoreCert.Dock = DockStyle.Fill
+        CHK_IgnoreCert.Name = "CHK_IgnoreCert"
+        CHK_IgnoreCert.TabIndex = 6
+        CHK_IgnoreCert.Text = "Ignore certificate errors (self-signed HTTPS)"
+        CHK_IgnoreCert.TextAlign = ContentAlignment.MiddleCenter
+        TT_Main.SetToolTip(CHK_IgnoreCert, "Allow connecting to a qBittorrent WebUI that uses a self-signed HTTPS certificate")
+        '
         ' STS_Main
         ' 
         STS_Main.Items.AddRange(New ToolStripItem() {TSSL_Main})
@@ -264,8 +278,8 @@ Partial Class Main
         TLP_SubMain.Location = New Point(3, 3)
         TLP_SubMain.Name = "TLP_SubMain"
         TLP_SubMain.RowCount = 4
-        TLP_SubMain.RowStyles.Add(New RowStyle(SizeType.Percent, 50F))
-        TLP_SubMain.RowStyles.Add(New RowStyle(SizeType.Percent, 50F))
+        TLP_SubMain.RowStyles.Add(New RowStyle(SizeType.Absolute, 160F))
+        TLP_SubMain.RowStyles.Add(New RowStyle(SizeType.Percent, 100F))
         TLP_SubMain.RowStyles.Add(New RowStyle(SizeType.Absolute, 54F))
         TLP_SubMain.RowStyles.Add(New RowStyle())
         TLP_SubMain.Size = New Size(393, 305)
@@ -289,10 +303,12 @@ Partial Class Main
         TLP_MainSubQuantum.Controls.Add(TBE_Startup, 0, 0)
         TLP_MainSubQuantum.Controls.Add(TBE_LogFile, 0, 1)
         TLP_MainSubQuantum.Controls.Add(BTN_LogFile, 0, 2)
+        TLP_MainSubQuantum.Controls.Add(BTN_PostScript, 0, 3)
         TLP_MainSubQuantum.Dock = DockStyle.Fill
         TLP_MainSubQuantum.Location = New Point(3, 19)
         TLP_MainSubQuantum.Name = "TLP_MainSubQuantum"
-        TLP_MainSubQuantum.RowCount = 4
+        TLP_MainSubQuantum.RowCount = 5
+        TLP_MainSubQuantum.RowStyles.Add(New RowStyle(SizeType.Absolute, 32F))
         TLP_MainSubQuantum.RowStyles.Add(New RowStyle(SizeType.Absolute, 32F))
         TLP_MainSubQuantum.RowStyles.Add(New RowStyle(SizeType.Absolute, 32F))
         TLP_MainSubQuantum.RowStyles.Add(New RowStyle(SizeType.Absolute, 32F))
@@ -319,10 +335,12 @@ Partial Class Main
         TLP_MainSubqBittorrent.Controls.Add(TXT_Host, 0, 0)
         TLP_MainSubqBittorrent.Controls.Add(TXT_Username, 0, 1)
         TLP_MainSubqBittorrent.Controls.Add(TXT_Password, 0, 2)
+        TLP_MainSubqBittorrent.Controls.Add(CHK_IgnoreCert, 0, 3)
         TLP_MainSubqBittorrent.Dock = DockStyle.Fill
         TLP_MainSubqBittorrent.Location = New Point(3, 19)
         TLP_MainSubqBittorrent.Name = "TLP_MainSubqBittorrent"
-        TLP_MainSubqBittorrent.RowCount = 4
+        TLP_MainSubqBittorrent.RowCount = 5
+        TLP_MainSubqBittorrent.RowStyles.Add(New RowStyle(SizeType.Absolute, 32F))
         TLP_MainSubqBittorrent.RowStyles.Add(New RowStyle(SizeType.Absolute, 32F))
         TLP_MainSubqBittorrent.RowStyles.Add(New RowStyle(SizeType.Absolute, 32F))
         TLP_MainSubqBittorrent.RowStyles.Add(New RowStyle(SizeType.Absolute, 32F))
@@ -465,13 +483,13 @@ Partial Class Main
         LNK_About.AutoSize = True
         TLP_About.SetColumnSpan(LNK_About, 3)
         LNK_About.Dock = DockStyle.Fill
-        LNK_About.LinkArea = New LinkArea(0, 42)
+        LNK_About.LinkArea = New LinkArea(0, 16)
         LNK_About.Location = New Point(3, 20)
         LNK_About.Name = "LNK_About"
         LNK_About.Size = New Size(393, 20)
         LNK_About.TabIndex = 2
         LNK_About.TabStop = True
-        LNK_About.Text = "https://github.com/UHAXM1/Quantum/releases"
+        LNK_About.Text = "Updated by casi3"
         LNK_About.TextAlign = ContentAlignment.TopCenter
         ' 
         ' LNK_AboutProtonVPN
@@ -553,7 +571,7 @@ Partial Class Main
         ' 
         AutoScaleDimensions = New SizeF(7F, 15F)
         AutoScaleMode = AutoScaleMode.Font
-        ClientSize = New Size(413, 390)
+        ClientSize = New Size(413, 497)
         Controls.Add(TLP_Main)
         Controls.Add(STS_Main)
         DoubleBuffered = True
@@ -618,12 +636,14 @@ Partial Class Main
     Friend WithEvents TT_Main As ToolTip
     Friend WithEvents CH_VPNValid As ColumnHeader
     Friend WithEvents BTN_LogFile As Button
+    Friend WithEvents BTN_PostScript As Button
     Friend WithEvents LBL_Author As Label
     Friend WithEvents TBE_Startup As ToggleButtonEx
     Friend WithEvents TBE_LogFile As ToggleButtonEx
     Friend WithEvents TXT_Host As TextBox
     Friend WithEvents TXT_Username As TextBox
     Friend WithEvents TXT_Password As TextBox
+    Friend WithEvents CHK_IgnoreCert As CheckBox
     Friend WithEvents GroupBox1 As GroupBoxEx
     Friend WithEvents TLP_MainSubQuantum As TableLayoutPanel
     Friend WithEvents GB_qBittorrentConfig As GroupBoxEx

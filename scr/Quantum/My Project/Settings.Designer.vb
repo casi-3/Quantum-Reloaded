@@ -137,6 +137,30 @@ Namespace My
                 Me("AutoFindLog") = value
             End Set
         End Property
+
+        <Global.System.Configuration.UserScopedSettingAttribute(),  _
+         Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
+         Global.System.Configuration.DefaultSettingValueAttribute("False")>  _
+        Public Property IgnoreCertErrors() As Boolean
+            Get
+                Return CType(Me("IgnoreCertErrors"),Boolean)
+            End Get
+            Set
+                Me("IgnoreCertErrors") = value
+            End Set
+        End Property
+
+        <Global.System.Configuration.UserScopedSettingAttribute(),  _
+         Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
+         Global.System.Configuration.DefaultSettingValueAttribute("")>  _
+        Public Property PostUpdateScript() As String
+            Get
+                Return CType(Me("PostUpdateScript"),String)
+            End Get
+            Set
+                Me("PostUpdateScript") = value
+            End Set
+        End Property
     End Class
 End Namespace
 

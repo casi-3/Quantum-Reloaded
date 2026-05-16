@@ -1,0 +1,4 @@
+root = true
+
+[*.vb]
+dotnet_diagnostic.WFO1000.severity = warning

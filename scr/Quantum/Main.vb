@@ -1,7 +1,6 @@
 ﻿Imports System.IO
 Imports Microsoft.Win32
 Imports QBittorrent.Client
-Imports GitHubUpdate
 
 Public Class Main
 
@@ -23,6 +22,22 @@ Public Class Main
 
     End Sub
 
+    Private Function BuildClient(ByVal pHost As String) As QBittorrentClient
+
+        If My.Settings.IgnoreCertErrors Then
+
+            Dim Handler As New System.Net.Http.HttpClientHandler()
+            Handler.ServerCertificateCustomValidationCallback = System.Net.Http.HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            Return New QBittorrentClient(New Uri(pHost), Handler, True)
+
+        Else
+
+            Return New QBittorrentClient(New Uri(pHost))
+
+        End If
+
+    End Function
+
     ' Test connection to qBittorrent
     Private Async Function CheckConnection() As Task
 
@@ -32,7 +47,7 @@ Public Class Main
             LV_VPNLogFile.Items.Clear()
 
             ' Open a new connection to qBittorrnet
-            Dim Client = New QBittorrentClient(New Uri(My.Settings.Host))
+            Dim Client = BuildClient(My.Settings.Host)
 
             ' Pass user/pass if needed
             Await Client.LoginAsync(My.Settings.Username, My.Settings.Password)
@@ -66,7 +81,7 @@ Public Class Main
         Try
 
             ' Open a new connection to qBittorrnet
-            Dim Client = New QBittorrentClient(New Uri(TXT_Host.Text))
+            Dim Client = BuildClient(TXT_Host.Text)
 
             ' Pass user/pass if needed
             Await Client.LoginAsync(TXT_Username.Text, TXT_Password.Text)
@@ -102,31 +117,155 @@ Public Class Main
 
     End Function
 
+    Private Async Function RunPostUpdateScript(ByVal pPort As Integer) As Task
+
+        Try
+
+            Dim ScriptPath As String = My.Settings.PostUpdateScript
+
+            If String.IsNullOrWhiteSpace(ScriptPath) Then
+
+                Return
+
+            End If
+
+            If Not File.Exists(ScriptPath) Then
+
+                LogOutput("Post-update script not found: " & ScriptPath, True, True)
+                Return
+
+            End If
+
+            Dim PSI As New ProcessStartInfo()
+            PSI.UseShellExecute = False
+            PSI.CreateNoWindow = True
+            PSI.WorkingDirectory = Path.GetDirectoryName(ScriptPath)
+            PSI.EnvironmentVariables("QUANTUM_PORT") = pPort.ToString()
+
+            If Path.GetExtension(ScriptPath).ToLowerInvariant() = ".ps1" Then
+
+                PSI.FileName = "powershell.exe"
+                PSI.Arguments = "-NoProfile -ExecutionPolicy Bypass -File """ & ScriptPath & """ " & pPort
+
+            Else
+
+                PSI.FileName = ScriptPath
+                PSI.Arguments = pPort.ToString()
+
+            End If
+
+            Dim Proc As Process = Process.Start(PSI)
+
+            Await Task.WhenAny(Proc.WaitForExitAsync(), Task.Delay(30000))
+
+            If Proc.HasExited Then
+
+                LogOutput("Post-update script finished (exit code " & Proc.ExitCode & ")", True, False)
+
+            Else
+
+                LogOutput("Post-update script started (still running)", True, False)
+
+            End If
+
+        Catch ex As Exception
+
+            LogOutput("Post-update script error: " & ex.Message, True, True)
+
+        End Try
+
+    End Function
+
+    Private Sub UpdatePostScriptButton()
+
+        Try
+
+            If String.IsNullOrWhiteSpace(My.Settings.PostUpdateScript) Then
+
+                BTN_PostScript.Text = "Post-update script (optional)"
+
+            Else
+
+                BTN_PostScript.Text = "Script: " & Path.GetFileName(My.Settings.PostUpdateScript)
+
+            End If
+
+            TT_Main.SetToolTip(BTN_PostScript, My.Settings.PostUpdateScript)
+
+        Catch ex As Exception
+
+            LogOutput(ex.Message, True, True)
+
+        End Try
+
+    End Sub
+
+    Private Sub BTN_PostScript_Click(sender As Object, e As EventArgs) Handles BTN_PostScript.Click
+
+        Try
+
+            If Not String.IsNullOrWhiteSpace(My.Settings.PostUpdateScript) Then
+
+                Dim Choice As DialogResult = MessageBox.Show("A post-update script is set:" & vbCrLf & My.Settings.PostUpdateScript & vbCrLf & vbCrLf & "Yes = choose another, No = remove it, Cancel = keep", "Post-update script", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question)
+
+                If Choice = DialogResult.Cancel Then
+
+                    Return
+
+                End If
+
+                If Choice = DialogResult.No Then
+
+                    My.Settings.PostUpdateScript = ""
+                    My.Settings.Save()
+                    UpdatePostScriptButton()
+                    Return
+
+                End If
+
+            End If
+
+            Dim Dialog As New OpenFileDialog()
+            Dialog.Title = "Select a script or program to run after the port is updated"
+            Dialog.Filter = "Scripts and programs|*.bat;*.cmd;*.ps1;*.exe|All files|*.*"
+            Dialog.Multiselect = False
+
+            If Dialog.ShowDialog() = DialogResult.OK Then
+
+                My.Settings.PostUpdateScript = Dialog.FileName
+                My.Settings.Save()
+                UpdatePostScriptButton()
+
+            End If
+
+        Catch ex As Exception
+
+            LogOutput(ex.Message, True, True)
+
+        End Try
+
+    End Sub
+
     ' Pass the pPort param to qBittorrent
     Private Async Function UpdatePort(ByVal pPort As Integer) As Task
 
         Try
 
             ' Open a new connection to qBittorrnet
-            Dim Client = New QBittorrentClient(New Uri(My.Settings.Host))
+            Dim Client = BuildClient(My.Settings.Host)
 
             ' Pass user/pass if needed
             Await Client.LoginAsync(My.Settings.Username, My.Settings.Password)
 
-            ' Get current preferences
-            Dim Prefs = New Preferences()
-            Prefs = Await Client.GetPreferencesAsync()
-
-            ' Update qBittorrent port with passed param
-            Prefs.ListenPort = pPort
-
             ' Push settings to qBittorrnet
-            Await Client.SetPreferencesAsync(Prefs)
+            Await Client.SetPreferencesAsync(New Preferences With {.ListenPort = pPort})
 
             ' If no exception then save the port
             LastValidPort = pPort
 
             LogOutput("Updated qBittorrent port to " & LastValidPort, True, False)
+
+            Await RunPostUpdateScript(pPort)
 
         Catch ex As Exception
 
@@ -539,7 +678,7 @@ Public Class Main
             Me.Text = My.Application.Info.AssemblyName & " - v" & My.Application.Info.Version.Major & "." & My.Application.Info.Version.Minor & "." & My.Application.Info.Version.Build
 
             ' Set the main form size
-            Me.Size = New Size(433, 433)
+            Me.Size = New Size(433, 540)
 
             ' Make sure the first tab is selected
             TAB_Main.SelectedIndex = 0
@@ -599,6 +738,8 @@ Public Class Main
             TXT_Host.Text = My.Settings.Host
             TXT_Username.Text = My.Settings.Username
             TXT_Password.Text = My.Settings.Password
+            CHK_IgnoreCert.Checked = My.Settings.IgnoreCertErrors
+            UpdatePostScriptButton()
 
             ' Check registry for autorun and update UI
             Dim KeyPath As String = "SOFTWARE\Microsoft\Windows\CurrentVersion\Run\"
@@ -1233,7 +1374,7 @@ Public Class Main
         Try
 
             ' Define URL
-            Dim GitURL As String = "https://github.com/UHAXM1/Quantum/releases"
+            Dim GitURL As String = "https://github.com/casi-3/Quantum-Reloaded"
 
             ' Launch the webbrowser
             Process.Start(New ProcessStartInfo(GitURL) With {.UseShellExecute = True})
@@ -1424,6 +1565,13 @@ Public Class Main
     Private Sub TXT_Password_TextChanged(sender As Object, e As EventArgs)
 
         UpdateConnectionUI()
+
+    End Sub
+
+    Private Sub CHK_IgnoreCert_CheckedChanged(sender As Object, e As EventArgs) Handles CHK_IgnoreCert.CheckedChanged
+
+        My.Settings.IgnoreCertErrors = CHK_IgnoreCert.Checked
+        My.Settings.Save()
 
     End Sub
 
