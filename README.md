@@ -12,6 +12,7 @@ The original project is no longer maintained. This fork keeps it working with cu
 ## What is new in Reloaded
 
 - Works with **qBittorrent 5.2+**, tested against a real qBittorrent 5.2 instance. The port is now updated with a single targeted call instead of rewriting every preference.
+- **Robust ProtonVPN log discovery**: when several `vX.Y.Z` folders are left next to each other under the install root, Quantum scans them all and picks the freshest service log. It also falls back to the per-user client log at `%LocalAppData%\Proton\Proton VPN\Logs\client-logs.txt`, which carries the same port information.
 - **Single file**: one `Quantum.exe`, nothing else to install. The .NET runtime is included in the file.
 - Updated to **.NET 10**.
 - **Self-signed HTTPS support**: an option to ignore certificate errors, for a qBittorrent WebUI served over HTTPS with a self-signed certificate.

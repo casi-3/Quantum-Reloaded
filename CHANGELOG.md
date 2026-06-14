@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.1
+
+### Fixed
+- "No valid port information found in logs" when a previous ProtonVPN version directory was left next to the current one. Quantum now scans every `v*\ServiceData\Logs\service-logs.txt` under the install root and picks the most recent.
+- Same error when the log file Quantum was pointed at no longer received port updates. Quantum now also reads the per-user client log at `%LocalAppData%\Proton\Proton VPN\Logs\client-logs.txt`, which carries the same port information.
+
+### Changed
+- The active log file path shown in the settings is updated to the one Quantum actually found a port in, so the UI matches reality.
+
 ## 1.6.0 - Quantum Reloaded
 
 Community continuation of Quantum 1.5.0 by UHAX (https://github.com/UHAXM1/Quantum).

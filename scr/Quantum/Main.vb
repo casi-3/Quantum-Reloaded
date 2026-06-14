@@ -313,77 +313,65 @@ Public Class Main
 
             LV_VPNLogFile.Items.Add(HeaderItem)
 
-            ' Temp port as negative value
             Dim TempValidPort As Integer = -1
 
-            ' Are we locating the log file automaticlly?
-            If My.Settings.AutoFindLog = True Then
+            Dim Candidates As List(Of String) = GetCandidateLogPaths(My.Settings.AutoFindLog)
 
-                SetAutoLogFileLocation()
+            If Candidates.Count = 0 Then
 
-            End If
+                LogOutput("Cannot locate ProtonVPN log files", True, False)
+                GB_ProtonLog.Text = "ProtonVPN Log Files Output (Parsed)"
 
-            ' Get the log file directory from the filepath, if it exisits process
-            If File.Exists(My.Settings.FilePath) Then
+            Else
 
-                ' Read log
-                Dim PrimaryLogTempPort As Integer = ReadLogFile(My.Settings.FilePath)
+                Dim SuccessPath As String = ""
 
-                ' If valid port then update temp
-                If PrimaryLogTempPort >= 0 Then
+                For Each Candidate As String In Candidates
 
-                    TempValidPort = PrimaryLogTempPort
+                    LV_VPNLogFile.Items.Clear()
 
-                Else
+                    Dim ItHeader As New ListViewItem(LV_VPNLogFile.Columns.Item(0).Text)
+                    ItHeader.SubItems.Add(LV_VPNLogFile.Columns.Item(1).Text)
+                    ItHeader.SubItems.Add(LV_VPNLogFile.Columns.Item(2).Text)
+                    LV_VPNLogFile.Items.Add(ItHeader)
 
-                    ' No port data found
+                    Dim CandidatePort As Integer = ReadLogFile(Candidate)
 
-                    ' Get the log file directory from the filepath
-                    Dim ArchivedPathDirectory As String = Path.GetDirectoryName(My.Settings.FilePath)
+                    If CandidatePort >= 0 Then
 
-                    ' Get the oldest log file first, this is allways service-logs.1.txt if it exisits
-                    Dim ArchivedFilePath As String = ArchivedPathDirectory & "\service-logs.1.txt"
-
-                    ' If log exisits start to process
-                    If File.Exists(ArchivedFilePath) Then
-
-                        ' Read log
-                        Dim ArchivedLogTempPort As Integer = ReadLogFile(ArchivedFilePath)
-
-                        ' If valid port then update temp
-                        If ArchivedLogTempPort >= 0 Then
-
-                            TempValidPort = ArchivedLogTempPort
-
-                        Else
-
-                            ' No port data found
-
-                        End If
+                        TempValidPort = CandidatePort
+                        SuccessPath = Candidate
+                        Exit For
 
                     End If
 
+                Next
+
+                If My.Settings.AutoFindLog AndAlso SuccessPath <> "" AndAlso Not String.Equals(My.Settings.FilePath, SuccessPath, StringComparison.OrdinalIgnoreCase) Then
+
+                    My.Settings.FilePath = SuccessPath
+                    My.Settings.Save()
+
                 End If
 
-                ' Adjust column size
                 LV_VPNLogFile.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent)
 
-                ' Remove headers
-                LV_VPNLogFile.Items.RemoveAt(0)
+                If LV_VPNLogFile.Items.Count > 0 Then
 
-                ' Ensures last row is visible
-                If (LV_VPNLogFile.Items.Count) > 0 Then
+                    LV_VPNLogFile.Items.RemoveAt(0)
+
+                End If
+
+                If LV_VPNLogFile.Items.Count > 0 Then
 
                     LV_VPNLogFile.Items(LV_VPNLogFile.Items.Count - 1).EnsureVisible()
 
                 End If
 
-                ' Do checks on port validity
                 If TempValidPort >= 0 Then
 
                     If LastValidPort <> TempValidPort Then
 
-                        ' Call task to push port update
                         Dim DoTask As Task = UpdatePort(TempValidPort)
 
                     Else
@@ -399,12 +387,6 @@ Public Class Main
                 End If
 
                 GB_ProtonLog.Text = "ProtonVPN Log Files Output (Parsed) " & DateTime.Now
-
-            Else
-
-                ' ProtonVPN log files not found
-                LogOutput("Cannot locate ProtonVPN log files", True, False)
-                GB_ProtonLog.Text = "ProtonVPN Log Files Output (Parsed)"
 
             End If
 
@@ -780,46 +762,24 @@ Public Class Main
 
         Try
 
-            ' This is the registry folder used by ProtonVPN to store install information
-            Dim InstallLocationKeyPath As String = "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Proton VPN_is1"
+            Dim Candidates As List(Of String) = GetCandidateLogPaths(True)
 
-            Using InstallLocationKey As RegistryKey = Registry.LocalMachine.OpenSubKey(InstallLocationKeyPath, False)
+            If Candidates.Count = 0 Then Return
 
-                If InstallLocationKey IsNot Nothing Then
+            For Each C As String In Candidates
 
-                    ' Get the install location
-                    Dim InstallLocationObject As Object = InstallLocationKey.GetValue("InstallLocation")
+                If FileContainsPortPair(C) Then
 
-                    If InstallLocationObject IsNot Nothing AndAlso TypeOf InstallLocationObject Is String Then
-
-                        Using VersionKey As RegistryKey = Registry.LocalMachine.OpenSubKey(InstallLocationKeyPath, False)
-
-                            ' Get the current PrtonVPN vesion
-                            Dim VersionObject As Object = InstallLocationKey.GetValue("DisplayVersion")
-
-                            If VersionObject IsNot Nothing AndAlso TypeOf VersionObject Is String Then
-
-                                ' Combine found information into file path
-                                Dim LogFileLocation As String = InstallLocationObject & "v" & VersionObject & "\ServiceData\Logs\service-logs.txt"
-
-                                ' If log file found via registry
-                                If File.Exists(LogFileLocation) Then
-
-                                    ' Update settings and save
-                                    My.Settings.FilePath = LogFileLocation
-                                    My.Settings.Save()
-
-                                End If
-
-                            End If
-
-                        End Using
-
-                    End If
+                    My.Settings.FilePath = C
+                    My.Settings.Save()
+                    Return
 
                 End If
 
-            End Using
+            Next
+
+            My.Settings.FilePath = Candidates(0)
+            My.Settings.Save()
 
         Catch ex As Exception
 
@@ -828,6 +788,154 @@ Public Class Main
         End Try
 
     End Sub
+
+    Private Function GetCandidateLogPaths(ByVal pIncludeAutoSearch As Boolean) As List(Of String)
+
+        Dim Yielded As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
+        Dim Result As New List(Of String)
+
+        If Not String.IsNullOrEmpty(My.Settings.FilePath) AndAlso File.Exists(My.Settings.FilePath) Then
+
+            If Yielded.Add(My.Settings.FilePath) Then Result.Add(My.Settings.FilePath)
+
+            Dim ManualDir As String = Path.GetDirectoryName(My.Settings.FilePath)
+
+            If Not String.IsNullOrEmpty(ManualDir) Then
+
+                For Each Name As String In New String() {"service-logs.1.txt", "client-logs.1.txt"}
+
+                    Dim Sibling As String = Path.Combine(ManualDir, Name)
+
+                    If File.Exists(Sibling) AndAlso Yielded.Add(Sibling) Then Result.Add(Sibling)
+
+                Next
+
+            End If
+
+        End If
+
+        If Not pIncludeAutoSearch Then Return Result
+
+        Dim InstallRoot As String = ""
+
+        Try
+
+            Using Key As RegistryKey = Registry.LocalMachine.OpenSubKey("SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Proton VPN_is1", False)
+
+                If Key IsNot Nothing Then
+
+                    Dim InstallObj As Object = Key.GetValue("InstallLocation")
+                    Dim VersionObj As Object = Key.GetValue("DisplayVersion")
+
+                    If TypeOf InstallObj Is String Then
+
+                        InstallRoot = CStr(InstallObj)
+
+                        If TypeOf VersionObj Is String Then
+
+                            Dim Primary As String = Path.Combine(InstallRoot, "v" & CStr(VersionObj), "ServiceData", "Logs", "service-logs.txt")
+
+                            If File.Exists(Primary) AndAlso Yielded.Add(Primary) Then Result.Add(Primary)
+
+                        End If
+
+                    End If
+
+                End If
+
+            End Using
+
+        Catch
+        End Try
+
+        If String.IsNullOrEmpty(InstallRoot) OrElse Not Directory.Exists(InstallRoot) Then
+
+            InstallRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Proton", "VPN")
+
+        End If
+
+        If Directory.Exists(InstallRoot) Then
+
+            Dim ServiceFiles As New List(Of FileInfo)
+
+            For Each VDir As String In Directory.GetDirectories(InstallRoot, "v*")
+
+                For Each Name As String In New String() {"service-logs.txt", "service-logs.1.txt"}
+
+                    Dim P As String = Path.Combine(VDir, "ServiceData", "Logs", Name)
+
+                    If File.Exists(P) Then ServiceFiles.Add(New FileInfo(P))
+
+                Next
+
+            Next
+
+            ServiceFiles.Sort(Function(a, b) b.LastWriteTimeUtc.CompareTo(a.LastWriteTimeUtc))
+
+            For Each FI As FileInfo In ServiceFiles
+
+                If Yielded.Add(FI.FullName) Then Result.Add(FI.FullName)
+
+            Next
+
+        End If
+
+        Dim ClientLogsDir As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Proton", "Proton VPN", "Logs")
+
+        If Directory.Exists(ClientLogsDir) Then
+
+            Dim ClientFiles As New List(Of FileInfo)
+
+            For Each Name As String In New String() {"client-logs.txt", "client-logs.1.txt"}
+
+                Dim P As String = Path.Combine(ClientLogsDir, Name)
+
+                If File.Exists(P) Then ClientFiles.Add(New FileInfo(P))
+
+            Next
+
+            ClientFiles.Sort(Function(a, b) b.LastWriteTimeUtc.CompareTo(a.LastWriteTimeUtc))
+
+            For Each FI As FileInfo In ClientFiles
+
+                If Yielded.Add(FI.FullName) Then Result.Add(FI.FullName)
+
+            Next
+
+        End If
+
+        Return Result
+
+    End Function
+
+    Private Function FileContainsPortPair(ByVal pPath As String) As Boolean
+
+        Try
+
+            Using Reader As New StreamReader(New FileStream(pPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+
+                Dim Line As String = Reader.ReadLine()
+
+                While Line IsNot Nothing
+
+                    If Line.Contains("Port pair") AndAlso Line.Contains(" | ") AndAlso Line.Contains("->") AndAlso Line.Contains(",") Then
+
+                        Return True
+
+                    End If
+
+                    Line = Reader.ReadLine()
+
+                End While
+
+            End Using
+
+        Catch
+        End Try
+
+        Return False
+
+    End Function
 
     ' Sets the label for the LogFile button
     Private Sub UpdateSelectButton()
